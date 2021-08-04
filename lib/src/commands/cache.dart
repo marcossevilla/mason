@@ -1,6 +1,7 @@
 import 'package:io/io.dart';
 import 'package:mason/mason.dart';
 
+import '../bricks_json.dart';
 import '../command.dart';
 
 /// {@template cache_command}
@@ -13,46 +14,34 @@ class CacheCommand extends MasonCommand {
   }
 
   @override
-  final String description = 'Interact with mason cache';
+  final String description = 'Interact with mason cache.';
 
   @override
   final String name = 'cache';
 }
 
 /// {@template cache_command}
-/// `mason cache clear` command which wipes the local mason cache.
+/// `mason cache clear` command which clears all local bricks.
 /// {@endtemplate}
 class ClearCacheCommand extends MasonCommand {
   /// {@macro cache_command}
-  ClearCacheCommand({Logger? logger}) : super(logger: logger) {
-    argParser.addFlag(
-      'force',
-      abbr: 'f',
-      defaultsTo: false,
-      help: 'removes all bricks from disk and clears '
-          'the in-memory cache',
-    );
-  }
+  ClearCacheCommand({Logger? logger}) : super(logger: logger);
 
   @override
-  final String description = 'Clears the mason cache';
+  final String description = 'Clears the mason cache.';
 
   @override
   final String name = 'clear';
 
   @override
   Future<int> run() async {
-    final force = results['force'] == true;
-    if (force) {
-      logger.warn(
-        'using --force\nI sure hope you know what you are doing.',
-      );
-    }
     final clearDone = logger.progress('clearing cache');
-    cache.clear(force: force);
+
+    localBricksJson?.clear();
     try {
-      bricksJson.deleteSync();
+      BricksJson.rootDir.deleteSync(recursive: true);
     } catch (_) {}
+
     clearDone();
     return ExitCode.success.code;
   }

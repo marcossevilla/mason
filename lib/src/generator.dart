@@ -5,16 +5,18 @@ import 'dart:io' show Directory, File;
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
+import 'package:io/ansi.dart';
 import 'package:mason/mason.dart';
 import 'package:path/path.dart' as p;
 
 import 'brick_yaml.dart';
+import 'bricks_json.dart';
 import 'logger.dart';
 import 'mason_bundle.dart';
-import 'mason_cache.dart';
 import 'mason_yaml.dart';
 import 'render.dart';
 
+final _partialRegExp = RegExp(r'\{\{~\s([a-zA-Z\s.]+)\s\}\}');
 final _fileRegExp = RegExp(r'{{%\s?([a-zA-Z]+)\s?%}}');
 final _delimeterRegExp = RegExp(r'{{(.*?)}}');
 final _loopKeyRegExp = RegExp(r'{{#(.*?)}}');
@@ -22,6 +24,8 @@ final _loopValueRegExp = RegExp(r'{{#.*?}}.*?{{{(.*?)}}}.*?{{\/.*?}}');
 final _loopRegExp = RegExp(r'({{#.*?}}.*?{{{.*?}}}.*?{{\/.*?}})');
 final _loopValueReplaceRegExp = RegExp(r'({{{.*?}}})');
 final _loopInnerRegExp = RegExp(r'{{#.*?}}(.*?{{{.*?}}}.*?){{\/.*?}}');
+final _newlineOutRegExp = RegExp(r'(\r\n|\r|\n)');
+final _newlineInRegExp = RegExp(r'(\\\r\n|\\\r|\\\n)');
 final _unicodeOutRegExp = RegExp(r'[^\x00-\x7F]');
 final _unicodeInRegExp = RegExp(r'\\[^\x00-\x7F]');
 final _whiteSpace = RegExp(r'\s+');
@@ -93,8 +97,7 @@ class MasonGenerator extends Generator {
   /// Factory which creates a [MasonGenerator] based on
   /// a [GitPath] for a remote [BrickYaml] file.
   static Future<MasonGenerator> fromGitPath(GitPath gitPath) async {
-    final cache = MasonCache.empty();
-    final directory = await cache.writeBrick(Brick(git: gitPath));
+    final directory = await BricksJson.temp().add(Brick(git: gitPath));
     final file = File(p.join(directory, gitPath.path, BrickYaml.file));
     final brickYaml = checkedYamlDecode(
       file.readAsStringSync(),
@@ -125,11 +128,17 @@ abstract class Generator implements Comparable<Generator> {
   /// List of [TemplateFile] which will be used to generate files.
   final List<TemplateFile> files = [];
 
+  /// Map of partial files which will be used as includes.
+  ///
+  /// Contains a Map of partial file path to partial file content.
+  final Map<String, List<int>> partials = {};
+
   /// Add a new template file.
   void addTemplateFile(TemplateFile? file) {
-    if (file?.path.isNotEmpty == true) {
-      files.add(file!);
-    }
+    if (file == null) return;
+    _partialRegExp.hasMatch(file.path)
+        ? partials.addAll({file.path: file.content})
+        : files.add(file);
   }
 
   /// Generates files based on the provided [GeneratorTarget] and [vars].
@@ -145,7 +154,10 @@ abstract class Generator implements Comparable<Generator> {
         await target.createFile(resultFile.path, resultFile.content);
         fileCount++;
       } else {
-        final resultFiles = file.runSubstitution(Map<String, dynamic>.of(vars));
+        final resultFiles = file.runSubstitution(
+          Map<String, dynamic>.of(vars),
+          Map<String, List<int>>.of(partials),
+        );
         for (final file in resultFiles) {
           await target.createFile(file.path, file.content);
           fileCount++;
@@ -178,13 +190,45 @@ abstract class Generator implements Comparable<Generator> {
   }
 }
 
+/// File conflict resolution strategies used during
+/// the generation process.
+enum FileConflictResolution {
+  /// Always prompt the user for each file conflict.
+  prompt,
+
+  /// Always overwrite conflicting files.
+  overwrite,
+
+  /// Always skip conflicting files.
+  skip,
+}
+
+/// The overwrite rule when generating code and a conflict occurs.
+enum OverwriteRule {
+  /// Always overwrite the existing file.
+  alwaysOverwrite,
+
+  /// Always skip overwriting the existing file.
+  alwaysSkip,
+
+  /// Overwrite one time.
+  overwriteOnce,
+
+  /// Do not overwrite one time.
+  skipOnce,
+}
+
 /// {@template directory_generator_target}
 /// A [GeneratorTarget] based on a provided [Directory].
 /// {@endtemplate}
 class DirectoryGeneratorTarget extends GeneratorTarget {
   /// {@macro directory_generator_target}
-  DirectoryGeneratorTarget(this.dir, this.logger) {
-    dir.createSync();
+  DirectoryGeneratorTarget(
+    this.dir,
+    this.logger, [
+    FileConflictResolution? fileConflictResolution,
+  ]) : _overwriteRule = fileConflictResolution?.toOverwriteRule() {
+    dir.createSync(recursive: true);
   }
 
   /// The target [Directory].
@@ -193,14 +237,55 @@ class DirectoryGeneratorTarget extends GeneratorTarget {
   /// Logger used to output created files.
   final Logger logger;
 
-  @override
-  Future<File> createFile(String path, List<int> contents) {
-    final file = File(p.join(dir.path, path));
+  /// The rule used to handle file conflicts.
+  /// Determines whether to overwrite existing file or skip.
+  OverwriteRule? _overwriteRule;
 
-    return file
-        .create(recursive: true)
-        .then<File>((_) => file.writeAsBytes(contents))
-        .whenComplete(() => logger.delayed('  ${file.path} (new)'));
+  @override
+  Future<File> createFile(String path, List<int> contents) async {
+    final file = File(p.join(dir.path, path));
+    final fileExists = file.existsSync();
+
+    if (fileExists) {
+      final existingContents = file.readAsBytesSync();
+
+      if (const ListEquality<int>().equals(existingContents, contents)) {
+        logger.delayed('  ${file.path} ${lightCyan.wrap('(identical)')}');
+        return file;
+      }
+
+      final shouldPrompt = _overwriteRule != OverwriteRule.alwaysOverwrite &&
+          _overwriteRule != OverwriteRule.alwaysSkip;
+
+      if (shouldPrompt) {
+        logger.info('${red.wrap(styleBold.wrap('conflict'))} ${file.path}');
+        _overwriteRule = logger
+            .prompt(
+              yellow.wrap(
+                styleBold.wrap('Overwrite ${p.basename(file.path)}? (Yna) '),
+              ),
+            )
+            .toOverwriteRule();
+      }
+    }
+
+    switch (_overwriteRule) {
+      case OverwriteRule.alwaysSkip:
+      case OverwriteRule.skipOnce:
+        logger.delayed('  ${file.path} ${yellow.wrap('(skip)')}');
+        return file;
+      case OverwriteRule.alwaysOverwrite:
+      case OverwriteRule.overwriteOnce:
+      default:
+        return file
+            .create(recursive: true)
+            .then<File>((_) => file.writeAsBytes(contents))
+            .whenComplete(
+              () => logger.delayed(
+                '  ${file.path} ${lightGreen.wrap('(new)')}',
+              ),
+            );
+    }
   }
 }
 
@@ -231,7 +316,10 @@ class TemplateFile {
   final List<int> content;
 
   /// Performs a substitution on the [path] based on the incoming [parameters].
-  Set<FileContents> runSubstitution(Map<String, dynamic> parameters) {
+  Set<FileContents> runSubstitution(
+    Map<String, dynamic> parameters,
+    Map<String, List<int>> partials,
+  ) {
     var filePath = path.replaceAll(r'\', r'/');
     if (_loopRegExp.hasMatch(filePath)) {
       final matches = _loopKeyRegExp.allMatches(filePath);
@@ -266,28 +354,37 @@ class TemplateFile {
         final newContents = TemplateFile(
           newPath,
           utf8.decode(content),
-        )._createContent(parameters..addAll(param));
+        )._createContent(parameters..addAll(param), partials);
         fileContents.add(FileContents(newPath, newContents));
       }
 
       return fileContents;
     } else {
       final newPath = filePath.render(parameters);
-      final newContents = _createContent(parameters);
+      final newContents = _createContent(parameters, partials);
       return {FileContents(newPath, newContents)};
     }
   }
 
-  List<int> _createContent(Map<String, dynamic> vars) {
+  List<int> _createContent(
+    Map<String, dynamic> vars,
+    Map<String, List<int>> partials,
+  ) {
+    String sanitize(String input) {
+      return input.replaceAllMapped(
+        RegExp('${_newlineOutRegExp.pattern}|${_unicodeOutRegExp.pattern}'),
+        (match) => match.group(0) != null ? '\\${match.group(0)}' : match.input,
+      );
+    }
+
     try {
       final decoded = utf8.decode(content);
       if (!decoded.contains(_delimeterRegExp)) return content;
-      final sanitized = decoded.replaceAllMapped(
-        _unicodeOutRegExp,
-        (match) => match.group(0) != null ? '\\${match.group(0)}' : match.input,
-      );
-      final rendered = sanitized.render(vars).replaceAllMapped(
-            _unicodeInRegExp,
+      final sanitized = sanitize(decoded);
+      final rendered = sanitized
+          .render(vars, (name) => partialResolver(name, partials, sanitize))
+          .replaceAllMapped(
+            RegExp('${_newlineInRegExp.pattern}|${_unicodeInRegExp.pattern}'),
             (match) => match.group(0)?.substring(1) ?? match.input,
           );
       return utf8.encode(rendered);
@@ -375,4 +472,31 @@ List<TemplateFile> _decodeConcatenatedData(List<MasonBundledFile> files) {
   }
 
   return results;
+}
+
+extension on FileConflictResolution {
+  OverwriteRule? toOverwriteRule() {
+    switch (this) {
+      case FileConflictResolution.overwrite:
+        return OverwriteRule.alwaysOverwrite;
+      case FileConflictResolution.skip:
+        return OverwriteRule.alwaysSkip;
+      case FileConflictResolution.prompt:
+        return null;
+    }
+  }
+}
+
+extension on String {
+  OverwriteRule toOverwriteRule() {
+    switch (this) {
+      case 'n':
+        return OverwriteRule.skipOnce;
+      case 'a':
+        return OverwriteRule.alwaysOverwrite;
+      case 'Y':
+      default:
+        return OverwriteRule.overwriteOnce;
+    }
+  }
 }

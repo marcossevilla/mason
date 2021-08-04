@@ -8,14 +8,7 @@ import '../command.dart';
 /// {@endtemplate}
 class GetCommand extends MasonCommand {
   /// {@macro get_command}
-  GetCommand({Logger? logger}) : super(logger: logger) {
-    argParser.addFlag(
-      'force',
-      abbr: 'f',
-      defaultsTo: false,
-      help: 'Overwrites cached bricks',
-    );
-  }
+  GetCommand({Logger? logger}) : super(logger: logger);
 
   @override
   final String description = 'Gets all bricks.';
@@ -25,12 +18,12 @@ class GetCommand extends MasonCommand {
 
   @override
   Future<int> run() async {
+    final bricksJson = localBricksJson;
+    if (bricksJson == null) throw const MasonYamlNotFoundException();
     final getDone = logger.progress('getting bricks');
-    final force = results['force'] == true;
-    if (force) cache.clear();
     if (masonYaml.bricks.values.isNotEmpty) {
-      await Future.forEach(masonYaml.bricks.values, cache.writeBrick);
-      await flushCache();
+      await Future.forEach(masonYaml.bricks.values, bricksJson.add);
+      await bricksJson.flush();
     }
     getDone();
     return ExitCode.success.code;

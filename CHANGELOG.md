@@ -1,3 +1,125 @@
+# 0.0.1-dev.45
+
+- fix: `mason bundle` add `.otf` support.
+
+# 0.0.1-dev.44
+
+- feat: custom file conflict resolution via `mason make --on-conflict`
+
+# 0.0.1-dev.43
+
+- feat: support partials
+
+  Example:
+
+  ```
+  ├── HELLO.md
+  ├── {{~ footer.md }}
+  └── {{~ header.md }}
+  ```
+
+  `{{~ header.md }}`
+
+  ```md
+  # 🧱 {{name}}
+  ```
+
+  `{{~ footer.md }}`
+
+  ```md
+  _made with 💖 by mason_
+  ```
+
+  `HELLO.md`
+
+  ```md
+  {{> header.md }}
+
+  Hello {{name}}!
+
+  {{> footer.md }}
+  ```
+
+  `$ mason make hello --name Dash`
+
+  `HELLO.md`
+
+  ```md
+  # 🧱 Dash
+
+  Hello Dash!
+
+  _made with 💖 by mason_
+  ```
+
+# 0.0.1-dev.42
+
+- fix: improve `mason make --help` to show complete usage information
+
+  ```sh
+  Generate code using an existing brick template.
+
+  Usage: mason make [arguments]
+  -h, --help           Print this usage information.
+  -c, --config-path    Path to config json file containing variables.
+  -o, --output-dir     Directory where to output the generated code.
+                      (defaults to ".")
+
+  Run "mason help" to see global options.
+  ```
+
+# 0.0.1-dev.41
+
+- feat: add `OverwriteRule` for file conflict resolution (`Yna`)
+  - `Y` - overwrite (default)
+  - `n` - do not overwrite
+  - `a` - overwrite this and all others
+
+# 0.0.1-dev.40
+
+- fix: create target directory if it does not exist
+
+# 0.0.1-dev.39
+
+- feat!: update `mason make` to support custom output directory via `--output-dir` (`-o`)
+- refactor!: rename `mason bundle --directory` (`-d`) to `mason bundle --output-dir` (`-o`)
+- refactor!: rename `mason make --json` (`-j`) to `mason make --config-path` (`-c`)
+
+# 0.0.1-dev.38
+
+- feat!: remove `--force` from `mason cache clear`
+  - `mason cache clear` will remove all local bricks so `--force` is not necessary
+- fix: `mason cache clear` behavior to always clear local and global brick caches
+- fix: local and global brick installation conflicts
+- fix: `mason list` duplicate bricks
+- refactor: `MasonCache` to `BricksJson`
+  - simplification of internal APIs and cache implementation
+
+# 0.0.1-dev.37
+
+- feat: add `mason list` command
+- docs: update command descriptions for consistency
+
+# 0.0.1-dev.36
+
+- feat: add `mason uninstall` command
+
+# 0.0.1-dev.35
+
+- fix: adjust `mason cache clear --force` target directory to avoid deleting local files
+
+# 0.0.1-dev.34
+
+- fix: local mason get installation location for remote bricks
+- fix!: always attempt to fetch latest remote brick
+  - `mason get` no longer supports `--force` since it is handled automatically
+
+# 0.0.1-dev.33
+
+- feat: mason install command for global brick templates
+- docs: update mustache manual link
+- docs: update mason.yaml from init to use https for git
+
 # 0.0.1-dev.32
 
 - feat!: windows compatibility fixes

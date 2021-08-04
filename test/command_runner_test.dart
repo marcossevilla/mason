@@ -1,6 +1,4 @@
 // ignore_for_file: no_adjacent_strings_in_list
-import 'dart:async';
-
 import 'package:args/command_runner.dart';
 import 'package:io/io.dart';
 import 'package:mason/mason.dart';
@@ -9,22 +7,14 @@ import 'package:test/test.dart';
 import 'package:mason/src/command_runner.dart';
 import 'package:mason/src/version.dart';
 
+import 'helpers/helpers.dart';
+
 class MockLogger extends Mock implements Logger {}
 
 void main() {
   group('MasonCommandRunner', () {
-    late List<String> printLogs;
     late Logger logger;
     late MasonCommandRunner commandRunner;
-
-    void Function() overridePrint(void Function() fn) {
-      return () {
-        final spec = ZoneSpecification(print: (_, __, ___, String msg) {
-          printLogs.add(msg);
-        });
-        return Zone.current.fork(specification: spec).run<void>(fn);
-      };
-    }
 
     setUp(() {
       printLogs = [];
@@ -79,12 +69,15 @@ void main() {
               '    --version    Print the current version.\n'
               '\n'
               'Available commands:\n'
-              '  bundle   Generates a bundle from a brick template\n'
-              '  cache    Interact with mason cache\n'
-              '  get      Gets all bricks.\n'
-              '  init     Initialize mason in the current directory.\n'
-              '  make     Generate code using an existing brick template.\n'
-              '  new      Creates a new brick template.\n'
+              '  bundle      Generates a bundle from a brick template.\n'
+              '  cache       Interact with mason cache.\n'
+              '  get         Gets all bricks.\n'
+              '  init        Initialize mason in the current directory.\n'
+              '  install     Installs a brick globally.\n'
+              '  list        Lists all available bricks.\n'
+              '  make        Generate code using an existing brick template.\n'
+              '  new         Creates a new brick template.\n'
+              '  uninstall   Uninstalls a brick globally.\n'
               '\n'
               'Run "mason help <command>" for more information about a command.'
         ];
@@ -105,12 +98,15 @@ void main() {
                 '    --version    Print the current version.\n'
                 '\n'
                 'Available commands:\n'
-                '  bundle   Generates a bundle from a brick template\n'
-                '  cache    Interact with mason cache\n'
-                '  get      Gets all bricks.\n'
-                '  init     Initialize mason in the current directory.\n'
-                '  make     Generate code using an existing brick template.\n'
-                '  new      Creates a new brick template.\n'
+                '  bundle      Generates a bundle from a brick template.\n'
+                '  cache       Interact with mason cache.\n'
+                '  get         Gets all bricks.\n'
+                '  init        Initialize mason in the current directory.\n'
+                '  install     Installs a brick globally.\n'
+                '  list        Lists all available bricks.\n'
+                '''  make        Generate code using an existing brick template.\n'''
+                '  new         Creates a new brick template.\n'
+                '  uninstall   Uninstalls a brick globally.\n'
                 '\n'
                 '''Run "mason help <command>" for more information about a command.'''
           ];
@@ -130,7 +126,7 @@ void main() {
         test('outputs current version', () async {
           final result = await commandRunner.run(['--version']);
           expect(result, equals(ExitCode.success.code));
-          verify(() => logger.info('mason version: $packageVersion'));
+          verify(() => logger.info('Mason $packageVersion'));
         });
       });
     });

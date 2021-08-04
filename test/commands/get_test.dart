@@ -3,8 +3,9 @@ import 'dart:io';
 
 import 'package:io/io.dart';
 import 'package:mason/mason.dart';
+import 'package:mason/src/command.dart';
 import 'package:mason/src/command_runner.dart';
-import 'package:mason/src/mason_cache.dart';
+import 'package:mason/src/bricks_json.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
@@ -78,9 +79,13 @@ void main() {
       final todosPath = path.canonicalize(
         path.join(Directory.current.path, bricksPath, 'todos'),
       );
-      final gitUrl =
-          '''mason_60e936dbe81fab0463b4efd5a396c50e4fcf52484fe2aa189d46874215a10b52''';
-      final masonUrl = path.join(MasonCache.empty().rootDir, 'git', gitUrl);
+      final widgetPath =
+          '''widget_536b4405bffd371ab46f0948d0a5b9a2ac2cddb270ebc3d6f684217f7741422f''';
+      final masonUrl = path.join(
+        BricksJson.rootDir.path,
+        'git',
+        '''mason_60e936dbe81fab0463b4efd5a396c50e4fcf52484fe2aa189d46874215a10b52''',
+      );
 
       expect(
         File(expectedBrickJsonPath).readAsStringSync(),
@@ -94,7 +99,7 @@ void main() {
                 greetingPath,
             '''todos_73b2e1ae179e296b318703953a86f28a792e94bed4a9adec9f8ee5893c4527a7''':
                 todosPath,
-            gitUrl: masonUrl,
+            widgetPath: masonUrl,
           }),
         ),
       );
@@ -103,8 +108,7 @@ void main() {
       expect(doneCallCount, equals(1));
     });
 
-    test('creates .mason/brick.json when mason.yaml exists with --force',
-        () async {
+    test('creates .mason/brick.json when mason.yaml exists', () async {
       final expectedBrickJsonPath = path.join(
         Directory.current.path,
         '.mason',
@@ -113,7 +117,7 @@ void main() {
 
       expect(File(expectedBrickJsonPath).existsSync(), isFalse);
 
-      final result = await commandRunner.run(['get', '--force']);
+      final result = await commandRunner.run(['get']);
       expect(result, equals(ExitCode.success.code));
 
       expect(File(expectedBrickJsonPath).existsSync(), isTrue);
@@ -140,9 +144,7 @@ void main() {
       final result = await commandRunner.run(['get']);
       expect(result, equals(ExitCode.usage.code));
       verify(
-        () => logger.err(
-          'Could not find mason.yaml.\nDid you forget to run mason init?',
-        ),
+        () => logger.err(const MasonYamlNotFoundException().message),
       ).called(1);
     });
   });

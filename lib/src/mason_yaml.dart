@@ -26,6 +26,9 @@ class MasonYaml {
   /// `mason.yaml`
   static const file = 'mason.yaml';
 
+  /// static constant for an empty `mason.yaml` file.
+  static const empty = MasonYaml(<String, Brick>{});
+
   /// [Map] of [Brick] alias to [Brick] instances.
   final Map<String, Brick> bricks;
 
@@ -36,9 +39,7 @@ class MasonYaml {
     var dir = cwd;
     while (prev?.path != dir.path) {
       final masonConfig = File(p.join(dir.path, 'mason.yaml'));
-      if (masonConfig.existsSync()) {
-        return masonConfig;
-      }
+      if (masonConfig.existsSync()) return masonConfig;
       prev = dir;
       dir = dir.parent;
     }
