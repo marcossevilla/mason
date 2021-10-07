@@ -1,7 +1,8 @@
 import 'dart:async';
 
-import 'dart:io';
-import 'package:io/ansi.dart';
+import 'package:universal_io/io.dart';
+
+import 'io.dart';
 
 /// A basic Logger which wraps [print] and applies various styles.
 class Logger {
@@ -57,7 +58,7 @@ class Logger {
       final time =
           (_stopwatch.elapsed.inMilliseconds / 1000.0).toStringAsFixed(1);
       stdout.write(
-        '''${lightGreen.wrap('\b${'\b' * (message.length + 4)}✓')} ${update ?? message} (${time}ms)\n''',
+        '''${lightGreen.wrap('\b${'\b' * (message.length + 4)}✓')} ${update ?? message} (${time}s)\n''',
       );
       _timer?.cancel();
     };

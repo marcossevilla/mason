@@ -14,13 +14,59 @@ Mason allows developers to create and consume reusable templates called bricks.
 
 ## Quick Start
 
-### Installing
-
 ```sh
-# Activate from pub.dev
+# 🎯 Activate from https://pub.dev
 $ dart pub global activate mason
 
-# Or install using Homebrew
+# 🍺 Or install from https://brew.sh
+$ brew tap felangel/mason
+$ brew install mason
+
+# 🚀 Initialize mason
+$ mason init
+
+# 🧱 Use your first brick
+$ mason make hello
+```
+
+---
+
+## Table Of Contents
+
+- [Overview](#overview)
+  * [Installation](#installation)
+  * [Initializing](#initializing)
+  * [Command Line Variables](#command-line-variables)
+  * [Variable Prompts](#variable-prompts)
+  * [Config File for Input Variables](#config-file-for-input-variables)
+  * [Custom Output Directory](#custom-output-directory)
+  * [File Conflict Resolution](#file-conflict-resolution)
+- [Creating New Bricks](#creating-new-bricks)
+  * [Brick YAML](#brick-yaml)
+  * [Brick Template](#brick-template)
+    + [Nested Templates (partials)](#nested-templates--partials-)
+    + [File Resolution](#file-resolution)
+    + [Built-in Lambdas](#built-in-lambdas)
+- [Adding Bricks](#adding-bricks)
+  * [Add Usage](#add-usage)
+- [Removing Bricks](#removing-bricks)
+  * [Remove Usage](#remove-usage)
+- [List all available Brick Templates](#list-all-available-brick-templates)
+  * [List Usage](#list-usage)
+- [Bundling](#bundling)
+  * [Bundle Usage](#bundle-usage)
+- [Complete Usage](#complete-usage)
+- [Video Tutorial](#video-tutorial)
+
+## Overview
+
+### Installation
+
+```sh
+# 🎯 Activate from https://pub.dev
+$ dart pub global activate mason
+
+# 🍺 Or install from https://brew.sh
 $ brew tap felangel/mason
 $ brew install mason
 ```
@@ -102,12 +148,13 @@ $ mason make hello --name Felix -o ./path/to/directory
 
 ### File Conflict Resolution
 
-By default, `mason make` will prompt on each file conflict and will allow users to specify how the conflict should be resolved via `Yna`:
+By default, `mason make` will prompt on each file conflict and will allow users to specify how the conflict should be resolved via `Yyna`:
 
 ```txt
-Y - overwrite (default)
-n - do not overwrite
-a - overwrite this and all others
+y - yes, overwrite (default)
+Y - yes, overwrite this and all others
+n - no, do not overwrite
+a - append to existing file
 ```
 
 A custom file conflict resolution strategy can be specified via the `--on-conflict` option:
@@ -121,6 +168,9 @@ $ mason make hello --name Felix --on-conflict overwrite
 
 # Always skip when there is a file conflict
 $ mason make hello --name Felix --on-conflict skip
+
+# Always append when there is a file conflict
+$ mason make hello --name Felix --on-conflict append
 ```
 
 ## Creating New Bricks
@@ -223,53 +273,114 @@ And the following brick template:
 
 Running `mason make app_icon --url path/to/icon.png` will generate `icon.png` with the contents of `path/to/icon.png` where the `path/to/icon.png` can be either a local or remote path. Check out the [app icon example brick](bricks/app_icon) to try it out.
 
-## Install Brick Templates Globally
+#### Built-in Lambdas
 
-The `install` command allows developers to install brick templates globally on their machines from either a local path or git url. Then developers can use globally installed brick templates anywhere (regardless of whether there is an existing `mason.yaml`).
+Mason supports a handful of built-in lambdas that can help with customizing generated code:
 
-### Install Usage
+| Name           | Example       | Usage                                            |
+| -------------- | ------------- | ------------------------------------------------ |
+| `camelCase`    | `helloWorld`  | `{{#camelCase}}{{variable}}{{/camelCase}}`       |
+| `constantCase` | `HELLO_WORLD` | `{{#constantCase}}{{variable}}{{/constantCase}}` |
+| `dotCase`      | `hello.world` | `{{#dotCase}}{{variable}}{{/dotCase}}`           |
+| `headerCase`   | `Hello-World` | `{{#headerCase}}{{variable}}{{/headerCase}}`     |
+| `lowerCase`    | `hello world` | `{{#lowerCase}}{{variable}}{{/lowerCase}}`       |
+| `pascalCase`   | `HelloWorld`  | `{{#pascalCase}}{{variable}}{{/pascalCase}}`     |
+| `paramCase`    | `hello-world` | `{{#paramCase}}{{variable}}{{/paramCase}}`       |
+| `pathCase`     | `hello/world` | `{{#pathCase}}{{variable}}{{/pathCase}}`         |
+| `sentenceCase` | `Hello world` | `{{#sentenceCase}}{{variable}}{{/sentenceCase}}` |
+| `snakeCase`    | `hello_world` | `{{#snakeCase}}{{variable}}{{/snakeCase}}`       |
+| `titleCase`    | `Hello World` | `{{#titleCase}}{{variable}}{{/titleCase}}`       |
+| `upperCase`    | `HELLO WORLD` | `{{#upperCase}}{{variable}}{{/upperCase}}`       |
 
-```sh
-# install from path
-$ mason install --source path ./path/to/brick
+_Example Usage_
 
-# install from git url
-$ mason install --source git https://github.com/user/repo
+Given the following example brick:
 
-# install from git url with path
-$ mason install --source git https://github.com/user/repo --path path/to/brick
-
-# install from git url with path and ref
-$ mason install --source git https://github.com/user/repo --path path/to/brick --ref tag-name
-
-# use alias "i" instead of "install" for a shorthand syntax
-# since git is the default source we don't need to specify a source.
-$ mason i https://github.com/user/repo
+```
+__brick__
+  ├── {{#snakeCase}}{{name}}{{/snakeCase}}.md
+  └── {{#pascalCase}}{{name}}{{/pascalCase}}.java
 ```
 
-Once a brick is installed globally it can be used from anywhere via the `mason make` command:
+`brick.yaml`:
+
+```yaml
+name: example
+description: An example brick.
+vars:
+  - name
+```
+
+We can generate code via:
+
+```sh
+$ mason make example --name my-name
+```
+
+The output will be:
+
+```
+├── my_name.md
+└── MyName.java
+```
+
+## Adding Bricks
+
+The `add` command allows developers to add brick templates locally or globally on their machines from either a local path or git url. By default `mason add` will add the template locally but bricks can be added globally by providing the `--global` (`-g`) flag.
+
+### Add Usage
+
+```sh
+# add from path
+$ mason add --source path ./path/to/brick
+
+# add from path (global)
+$ mason add --global --source path ./path/to/brick
+
+# add from path shorthand syntax
+$ mason add ./path/to/brick
+
+# add from path shorthand syntax (global)
+$ mason add -g ./path/to/brick
+
+# add from git url
+$ mason add --source git https://github.com/user/repo
+
+# add from git url (global)
+$ mason add -g --source git https://github.com/user/repo
+
+# add from git url with path
+$ mason add --source git https://github.com/user/repo --path path/to/brick
+
+# add from git url with path and ref
+$ mason add --source git https://github.com/user/repo --path path/to/brick --ref tag-name
+```
+
+Once a brick is added it can be used via the `mason make` command:
 
 ```sh
 $ mason make <BRICK_NAME>
 ```
 
-## Uninstall Brick Templates
+## Removing Bricks
 
-Bricks can be uninstalled by using the `uninstall` (`un` for short) command.
+Bricks can be removed by using the `remove` command. Use the `--global` (`-g`) flag to remove global bricks.
 
-### Uninstall Usage
+### Remove Usage
 
 ```sh
-# uninstall brick
-$ mason uninstall <BRICK_NAME>
+# remove brick
+$ mason remove <BRICK_NAME>
 
-# use alias "un" instead of "uninstall" for a shorthand syntax
-$ mason un <BRICK_NAME>
+# remove brick (global)
+$ mason remove -g <BRICK_NAME>
 ```
 
 ## List all available Brick Templates
 
 All available brick templates (local and global) can be seen via the `list` (`ls` for short) command.
+
+### List Usage
 
 ```sh
 # list all available bricks
@@ -288,6 +399,8 @@ There are currently two types of bundles:
 1. Universal - a platform-agnostic bundle
 2. Dart - a Dart specific bundle
 
+### Bundle Usage
+
 To generate a bundle:
 
 ```sh
@@ -298,7 +411,17 @@ mason bundle ./path/to/brick -o ./path/to/destination
 mason bundle ./path/to/brick -t dart -o ./path/to/destination
 ```
 
-## Usage
+A bundle can then be used to generate code from a brick programmatically:
+
+```dart
+// Create a MasonGenerator from the existing bundle.
+final generator = MasonGenerator.fromBundle(...);
+
+// Generate code based on the bundled brick.
+await generator.generate(...);
+```
+
+## Complete Usage
 
 ```sh
 $ mason
@@ -311,15 +434,15 @@ Global options:
     --version    Print the current version.
 
 Available commands:
+  add         Adds a brick from a local or remote source.
   bundle      Generates a bundle from a brick template.
   cache       Interact with mason cache.
-  get         Gets all bricks.
+  get         Gets all bricks in the nearest mason.yaml.
   init        Initialize mason in the current directory.
-  install     Installs a brick globally.
   list        Lists all available bricks.
   make        Generate code using an existing brick template.
   new         Creates a new brick template.
-  uninstall   Uninstalls a brick globally.
+  remove      Removes a brick.
 
 Run "mason help <command>" for more information about a command.
 ```

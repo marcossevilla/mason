@@ -1,11 +1,10 @@
-import 'dart:io';
-
-import 'package:io/io.dart';
 import 'package:mason/mason.dart';
 import 'package:mason/src/command_runner.dart';
+import 'package:mason/src/io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+import 'package:universal_io/io.dart';
 
 import '../helpers/helpers.dart';
 
@@ -48,7 +47,19 @@ void main() {
       final expected = Directory(
         path.join(testFixturesPath(cwd, suffix: 'init')),
       );
-      expect(directoriesDeepEqual(actual, expected), isTrue);
+      expect(
+        directoriesDeepEqual(actual, expected, ignore: ['bricks.json']),
+        isTrue,
+      );
+      expect(
+        File(path.join(actual.path, '.mason', 'bricks.json')).existsSync(),
+        isTrue,
+      );
+      verify(() => logger.progress('Initializing')).called(1);
+      verify(() => logger.progress('Getting brick')).called(1);
+      verify(
+        () => logger.info('Run "mason make hello" to use your first brick.'),
+      ).called(1);
     });
   });
 }

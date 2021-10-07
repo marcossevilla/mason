@@ -1,11 +1,10 @@
-import 'package:io/ansi.dart';
-import 'package:io/io.dart';
 import 'package:mason/mason.dart';
 import 'package:mason/src/generator.dart';
 import 'package:path/path.dart' as p;
 
 import '../brick_yaml.dart';
 import '../command.dart';
+import '../io.dart';
 import '../mason_yaml.dart';
 
 /// {@template init_command}
@@ -34,12 +33,27 @@ class InitCommand extends MasonCommand {
       target,
       vars: <String, String>{'name': '{{name}}'},
     );
-    fetchDone('Initialized');
+    fetchDone();
+
+    final getDone = logger.progress('Getting brick');
+    final bricksJson = localBricksJson;
+    if (bricksJson == null) throw const MasonYamlNotFoundException();
+    try {
+      if (masonYaml.bricks.values.isNotEmpty) {
+        await Future.forEach(masonYaml.bricks.values, bricksJson.add);
+      }
+    } finally {
+      await bricksJson.flush();
+      getDone();
+    }
+
     logger
       ..info(
         '${lightGreen.wrap('✓')} Generated ${generator.files.length} file(s):',
       )
-      ..flush(logger.success);
+      ..flush(logger.detail)
+      ..info('')
+      ..info('Run "mason make hello" to use your first brick.');
     return ExitCode.success.code;
   }
 }
@@ -70,7 +84,7 @@ vars:
 
   static const _masonYamlContent =
       '''# Register bricks which can be consumed via the Mason CLI.
-# https://pub.dev/packages/mason
+# https://github.com/felangel/mason
 bricks:
   # Sample Brick
   # Run `mason make hello` to try it out.

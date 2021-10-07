@@ -1,15 +1,15 @@
 import 'dart:convert';
-import 'dart:io';
+
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-import 'package:io/ansi.dart';
-import 'package:io/io.dart';
-import 'package:path/path.dart' as p;
 import 'package:mason/mason.dart';
 import 'package:mason/src/generator.dart';
+import 'package:path/path.dart' as p;
+import 'package:universal_io/io.dart';
 
 import '../brick_yaml.dart';
 import '../command.dart';
+import '../io.dart';
 
 /// {@template make_command}
 /// `mason make` command which generates code based on a brick template.
@@ -89,7 +89,7 @@ class _MakeCommand extends MasonCommand {
         generateDone();
         logger.err('${error}in $configPath');
         return ExitCode.usage.code;
-      } on Exception catch (error) {
+      } catch (error) {
         generateDone();
         logger.err('$error');
         return ExitCode.usage.code;
@@ -108,14 +108,9 @@ class _MakeCommand extends MasonCommand {
       }
       final fileCount = await generator.generate(target, vars: vars);
       generateDone('Made brick ${_brick.name}');
-      logger
-        ..info(
-          '${lightGreen.wrap('✓')} '
-          'Generated $fileCount file(s):',
-        )
-        ..flush(logger.detail);
+      logger.logFiles(fileCount);
       return ExitCode.success.code;
-    } on Exception catch (error) {
+    } catch (error) {
       generateDone?.call();
       logger.err('$error');
       return ExitCode.cantCreate.code;
@@ -152,12 +147,13 @@ extension on ArgParser {
     );
     addOption(
       'on-conflict',
-      allowed: ['prompt', 'overwrite', 'skip'],
+      allowed: ['prompt', 'overwrite', 'append', 'skip'],
       defaultsTo: 'prompt',
       allowedHelp: {
         'prompt': 'Always prompt the user for each file conflict.',
         'overwrite': 'Always overwrite conflicting files.',
-        'skip': 'Always skip conflicting files.'
+        'append': 'Always append conflicting files.',
+        'skip': 'Always skip conflicting files.',
       },
       help: 'File conflict resolution strategy.',
     );
@@ -171,8 +167,35 @@ extension on String {
         return FileConflictResolution.skip;
       case 'overwrite':
         return FileConflictResolution.overwrite;
+      case 'append':
+        return FileConflictResolution.append;
       default:
         return FileConflictResolution.prompt;
+    }
+  }
+}
+
+extension on Logger {
+  void logFiles(int fileCount) {
+    if (fileCount == 0) {
+      info(
+        '${lightGreen.wrap('✓')} '
+        'Generated $fileCount files',
+      );
+    } else if (fileCount == 1) {
+      this
+        ..info(
+          '${lightGreen.wrap('✓')} '
+          'Generated $fileCount file:',
+        )
+        ..flush(detail);
+    } else {
+      this
+        ..info(
+          '${lightGreen.wrap('✓')} '
+          'Generated $fileCount file(s):',
+        )
+        ..flush(detail);
     }
   }
 }

@@ -1,13 +1,13 @@
 // ignore_for_file: no_adjacent_strings_in_list
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:io/io.dart';
 import 'package:mason/mason.dart';
 import 'package:mason/src/command_runner.dart';
+import 'package:mason/src/io.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as path;
 import 'package:test/test.dart';
+import 'package:universal_io/io.dart';
 
 import '../helpers/helpers.dart';
 
@@ -20,7 +20,11 @@ void main() {
     late Logger logger;
     late MasonCommandRunner commandRunner;
 
-    setUp(() {
+    setUpAll(() async {
+      await MasonCommandRunner().run(['cache', 'clear']);
+    });
+
+    setUp(() async {
       setUpTestingEnvironment(cwd, suffix: '.make');
       File(path.join(Directory.current.path, 'mason.yaml'))
         ..writeAsStringSync('''bricks:
@@ -31,7 +35,11 @@ void main() {
   greeting:
     path: ../../../bricks/greeting
   hello_world:
-    path: ../bricks/hello_world
+    path: ../../../bricks/hello_world
+  plugin:
+    path: ../../../bricks/plugin
+  simple:
+    path: ../../../bricks/simple
   todos:
     path: ../../../bricks/todos
   widget:
@@ -50,6 +58,12 @@ void main() {
       final helloWorldPath = path.canonicalize(
         path.join(Directory.current.path, bricksPath, 'hello_world'),
       );
+      final pluginPath = path.canonicalize(
+        path.join(Directory.current.path, bricksPath, 'plugin'),
+      );
+      final simplePath = path.canonicalize(
+        path.join(Directory.current.path, bricksPath, 'simple'),
+      );
       final todosPath = path.canonicalize(
         path.join(Directory.current.path, bricksPath, 'todos'),
       );
@@ -65,8 +79,12 @@ void main() {
               docPath,
           '''greeting_81a4ec348561cdd721c3bb79b3d6dc14738bf17f02e18810dad2a6d88732e298''':
               greetingPath,
-          '''hello_world_6bb398ce3cd00f53423469ca6f0fbe8e6ee49a7351c5bf45de7faff464d31333''':
+          '''hello_world_fd66b903d5885651238b50e1205b0cf05f30573cc3b4a7a4f2d1f495edd33630''':
               helloWorldPath,
+          '''plugin_de4be97b1f4014112763f13689b00186175e5116db6bec26ee494b46f3ad8756''':
+              pluginPath,
+          '''simple_3bbc2ade88745ef690063c8f652631a4870ee6af619a327e297084251aebe232''':
+              simplePath,
           '''todos_6d110323da1d9f3a3ae2ecc6feae02edef8af68ca329601f33ee29e725f1f740''':
               todosPath,
           '''widget_02426be7ece33230d574cb7a76eb7a9a595a79cbf53a1b1c8f2f1de78dfbe23f''':
@@ -93,6 +111,7 @@ void main() {
             '                                (defaults to ".")\n'
             '''    --on-conflict               File conflict resolution strategy.\n'''
             '\n'
+            '''          [append]              Always append conflicting files.\n'''
             '''          [overwrite]           Always overwrite conflicting files.\n'''
             '''          [prompt] (default)    Always prompt the user for each file conflict.\n'''
             '          [skip]                Always skip conflicting files.\n'
@@ -102,6 +121,8 @@ void main() {
             '  documentation   Create Documentation Markdown Files\n'
             '  greeting        A Simple Greeting Template\n'
             '  hello_world     A Simple Hello World Template\n'
+            '  plugin          An example plugin template\n'
+            '  simple          A Simple Static Template\n'
             '  todos           A Todos Template\n'
             '  widget          Create a Simple Flutter Widget\n'
             '\n'
@@ -124,6 +145,7 @@ void main() {
             '                                (defaults to ".")\n'
             '''    --on-conflict               File conflict resolution strategy.\n'''
             '\n'
+            '''          [append]              Always append conflicting files.\n'''
             '''          [overwrite]           Always overwrite conflicting files.\n'''
             '''          [prompt] (default)    Always prompt the user for each file conflict.\n'''
             '          [skip]                Always skip conflicting files.\n'
@@ -290,6 +312,107 @@ in todos.json''',
       expect(directoriesDeepEqual(actual, expected), isTrue);
     });
 
+    test('generates plugin (empty)', () async {
+      final testDir = Directory(
+        path.join(Directory.current.path, 'plugin', 'empty'),
+      )..createSync(recursive: true);
+      Directory.current = testDir.path;
+      final result = await commandRunner.run(
+        ['make', 'plugin', '--ios', 'false', '--android', 'false'],
+      );
+      expect(result, equals(ExitCode.success.code));
+
+      final actual = Directory(
+        path.join(testFixturesPath(cwd, suffix: '.make'), 'plugin', 'empty'),
+      );
+      final expected = Directory(
+        path.join(testFixturesPath(cwd, suffix: 'make'), 'plugin', 'empty'),
+      );
+      expect(directoriesDeepEqual(actual, expected), isTrue);
+    });
+
+    test('generates plugin (android)', () async {
+      final testDir = Directory(
+        path.join(Directory.current.path, 'plugin', 'android'),
+      )..createSync(recursive: true);
+      Directory.current = testDir.path;
+      final result = await commandRunner.run(
+        ['make', 'plugin', '--ios', 'false', '--android', 'true'],
+      );
+      expect(result, equals(ExitCode.success.code));
+
+      final actual = Directory(
+        path.join(testFixturesPath(cwd, suffix: '.make'), 'plugin', 'android'),
+      );
+      final expected = Directory(
+        path.join(testFixturesPath(cwd, suffix: 'make'), 'plugin', 'android'),
+      );
+      expect(directoriesDeepEqual(actual, expected), isTrue);
+    });
+
+    test('generates plugin (ios)', () async {
+      final testDir = Directory(
+        path.join(Directory.current.path, 'plugin', 'ios'),
+      )..createSync(recursive: true);
+      Directory.current = testDir.path;
+      final result = await commandRunner.run(
+        ['make', 'plugin', '--ios', 'true', '--android', 'false'],
+      );
+      expect(result, equals(ExitCode.success.code));
+
+      final actual = Directory(
+        path.join(testFixturesPath(cwd, suffix: '.make'), 'plugin', 'ios'),
+      );
+      final expected = Directory(
+        path.join(testFixturesPath(cwd, suffix: 'make'), 'plugin', 'ios'),
+      );
+      expect(directoriesDeepEqual(actual, expected), isTrue);
+    });
+
+    test('generates plugin (android + ios)', () async {
+      final testDir = Directory(
+        path.join(Directory.current.path, 'plugin', 'android_ios'),
+      )..createSync(recursive: true);
+      Directory.current = testDir.path;
+      final result = await commandRunner.run(
+        ['make', 'plugin', '--ios', 'true', '--android', 'true'],
+      );
+      expect(result, equals(ExitCode.success.code));
+
+      final actual = Directory(
+        path.join(
+          testFixturesPath(cwd, suffix: '.make'),
+          'plugin',
+          'android_ios',
+        ),
+      );
+      final expected = Directory(
+        path.join(
+          testFixturesPath(cwd, suffix: 'make'),
+          'plugin',
+          'android_ios',
+        ),
+      );
+      expect(directoriesDeepEqual(actual, expected), isTrue);
+    });
+
+    test('generates simple', () async {
+      final testDir = Directory(
+        path.join(Directory.current.path, 'simple'),
+      )..createSync(recursive: true);
+      Directory.current = testDir.path;
+      final result = await commandRunner.run(['make', 'simple']);
+      expect(result, equals(ExitCode.success.code));
+
+      final actual = Directory(
+        path.join(testFixturesPath(cwd, suffix: '.make'), 'simple'),
+      );
+      final expected = Directory(
+        path.join(testFixturesPath(cwd, suffix: 'make'), 'simple'),
+      );
+      expect(directoriesDeepEqual(actual, expected), isTrue);
+    });
+
     test('generates todos', () async {
       final testDir = Directory(
         path.join(Directory.current.path, 'todos'),
@@ -442,6 +565,46 @@ in todos.json''',
       expect(fileB.readAsStringSync(), contains('Hi test-name2!'));
       verify(
         () => logger.delayed(any(that: contains('(new)'))),
+      ).called(1);
+    });
+
+    test('generates greeting and appends to existing file', () async {
+      final testDir = Directory(
+        path.join(Directory.current.path, 'greeting-append'),
+      )..createSync(recursive: true);
+      Directory.current = testDir.path;
+      var result = await commandRunner.run([
+        'make',
+        'greeting',
+        '--name',
+        'test-name',
+      ]);
+      expect(result, equals(ExitCode.success.code));
+
+      final fileA = File(
+        path.join(Directory.current.path, 'GREETINGS.md'),
+      );
+      expect(fileA.readAsStringSync(), contains('Hi test-name!'));
+      verify(
+        () => logger.delayed(any(that: contains('(new)'))),
+      ).called(1);
+
+      result = await commandRunner.run([
+        'make',
+        'greeting',
+        '--name',
+        'test-name2',
+        '--on-conflict',
+        'append',
+      ]);
+
+      expect(result, equals(ExitCode.success.code));
+      final fileB = File(
+        path.join(Directory.current.path, 'GREETINGS.md'),
+      );
+      expect(fileB.readAsStringSync(), contains('Hi test-name!Hi test-name2!'));
+      verify(
+        () => logger.delayed(any(that: contains('(modified)'))),
       ).called(1);
     });
   });

@@ -1,14 +1,14 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:args/command_runner.dart';
-import 'package:io/io.dart';
 import 'package:mason/mason.dart';
 import 'package:path/path.dart' as path;
 import 'package:recase/recase.dart';
+import 'package:universal_io/io.dart';
 
 import '../bundler.dart';
 import '../command.dart';
+import '../io.dart';
 
 /// Supported Bundle Types
 enum BundleType {
@@ -70,7 +70,7 @@ class BundleCommand extends MasonCommand {
         File(path.join(outputDir, '${bundle.name}_bundle.dart'))
           ..createSync(recursive: true)
           ..writeAsStringSync(
-            "// GENERATED CODE - DO NOT MODIFY BY HAND\n// ignore_for_file: prefer_single_quotes, public_member_api_docs, lines_longer_than_80_chars\n\nimport 'package:mason/mason.dart';\n\nfinal ${bundle.name.camelCase}Bundle = MasonBundle.fromJson(${json.encode(bundle.toJson())});",
+            "// GENERATED CODE - DO NOT MODIFY BY HAND\n// ignore_for_file: prefer_single_quotes, public_member_api_docs, lines_longer_than_80_chars\n\nimport 'package:mason/mason.dart';\n\nfinal ${bundle.name.camelCase}Bundle = MasonBundle.fromJson(<String, dynamic>${json.encode(bundle.toJson())});",
           );
         break;
       case BundleType.universal:

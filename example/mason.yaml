@@ -7,6 +7,10 @@ bricks:
     path: ../bricks/greeting
   hello_world:
     path: ../bricks/hello_world
+  plugin:
+    path: ../bricks/plugin
+  simple:
+    path: ../bricks/simple
   todos:
     path: ../bricks/todos
   widget:

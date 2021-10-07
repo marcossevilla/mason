@@ -1,15 +1,13 @@
-import 'dart:io';
-
 import 'package:args/command_runner.dart';
-import 'package:io/ansi.dart';
-import 'package:io/io.dart';
 import 'package:mason/mason.dart';
 import 'package:mason/src/generator.dart';
 import 'package:path/path.dart' as p;
 import 'package:recase/recase.dart';
+import 'package:universal_io/io.dart';
 
 import '../brick_yaml.dart';
 import '../command.dart';
+import '../io.dart';
 import '../mason_yaml.dart';
 import '../yaml_encode.dart';
 
@@ -61,13 +59,18 @@ class NewCommand extends MasonCommand {
     );
     final bricks = Map.of(masonYaml.bricks)..addAll({name: newBrick});
 
-    await Future.wait([
-      generator.generate(target, vars: <String, dynamic>{'name': '{{name}}'}),
-      if (!masonYaml.bricks.containsKey(name))
-        masonYamlFile.writeAsString(Yaml.encode(MasonYaml(bricks).toJson())),
-    ]);
-    await bricksJson.add(newBrick);
-    await bricksJson.flush();
+    try {
+      await Future.wait([
+        generator.generate(target, vars: <String, dynamic>{'name': '{{name}}'}),
+        if (!masonYaml.bricks.containsKey(name))
+          masonYamlFile.writeAsString(Yaml.encode(MasonYaml(bricks).toJson())),
+      ]);
+      await bricksJson.add(newBrick);
+      await bricksJson.flush();
+    } catch (_) {
+      done();
+      rethrow;
+    }
 
     done('Created new brick: $name');
     logger

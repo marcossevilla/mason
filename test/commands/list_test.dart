@@ -1,13 +1,12 @@
-import 'dart:io';
-
-import 'package:io/ansi.dart';
-import 'package:io/io.dart';
 import 'package:mason/mason.dart';
-import 'package:mason/src/command_runner.dart';
 import 'package:mason/src/bricks_json.dart';
+import 'package:mason/src/command_runner.dart';
+import 'package:mason/src/io.dart';
+import 'package:mason/src/logger.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
+import 'package:universal_io/io.dart';
 
 import '../helpers/helpers.dart';
 
@@ -35,13 +34,13 @@ void main() {
     test('exits successfully when no bricks are available', () async {
       final result = await commandRunner.run(['list']);
       expect(result, equals(ExitCode.success.code));
-      verifyNever(() => logger.info(any()));
+      verify(() => logger.info('(empty)')).called(1);
     });
 
     test('ls is available as an alias', () async {
       final result = await commandRunner.run(['ls']);
       expect(result, equals(ExitCode.success.code));
-      verifyNever(() => logger.info(any()));
+      verify(() => logger.info('(empty)')).called(1);
     });
 
     test(
@@ -65,7 +64,7 @@ void main() {
       );
       await expectLater(
         MasonCommandRunner(logger: logger).run(
-          ['i', '--source', 'path', greetingPath],
+          ['add', '-g', '--source', 'path', greetingPath],
         ),
         completion(ExitCode.success.code),
       );

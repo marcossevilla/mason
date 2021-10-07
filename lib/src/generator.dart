@@ -1,16 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:io' show Directory, File;
 
 import 'package:checked_yaml/checked_yaml.dart';
 import 'package:collection/collection.dart';
 import 'package:http/http.dart' as http;
-import 'package:io/ansi.dart';
 import 'package:mason/mason.dart';
 import 'package:path/path.dart' as p;
+import 'package:universal_io/io.dart' show Directory, File, FileMode;
 
 import 'brick_yaml.dart';
 import 'bricks_json.dart';
+import 'io.dart';
 import 'logger.dart';
 import 'mason_bundle.dart';
 import 'mason_yaml.dart';
@@ -151,6 +151,7 @@ abstract class Generator implements Comparable<Generator> {
       final fileMatch = _fileRegExp.firstMatch(file.path);
       if (fileMatch != null) {
         final resultFile = await _fetch(vars[fileMatch[1]] as String);
+        if (resultFile.path.isEmpty) return;
         await target.createFile(resultFile.path, resultFile.content);
         fileCount++;
       } else {
@@ -158,7 +159,15 @@ abstract class Generator implements Comparable<Generator> {
           Map<String, dynamic>.of(vars),
           Map<String, List<int>>.of(partials),
         );
+        final root = RegExp(r'\w:\\|\w:\/');
+        final separator = RegExp(r'\/|\\');
+        final rootOrSeparator = RegExp('$root|$separator');
+        final wasRoot = file.path.startsWith(rootOrSeparator);
         for (final file in resultFiles) {
+          final isRoot = file.path.startsWith(rootOrSeparator);
+          if (!wasRoot && isRoot) continue;
+          if (file.path.isEmpty) continue;
+          if (file.path.split(separator).contains('')) continue;
           await target.createFile(file.path, file.content);
           fileCount++;
         }
@@ -201,6 +210,9 @@ enum FileConflictResolution {
 
   /// Always skip conflicting files.
   skip,
+
+  /// Always append conflicting files.
+  append,
 }
 
 /// The overwrite rule when generating code and a conflict occurs.
@@ -211,11 +223,17 @@ enum OverwriteRule {
   /// Always skip overwriting the existing file.
   alwaysSkip,
 
+  /// Always append the existing file.
+  alwaysAppend,
+
   /// Overwrite one time.
   overwriteOnce,
 
   /// Do not overwrite one time.
   skipOnce,
+
+  /// Append one time
+  appendOnce,
 }
 
 /// {@template directory_generator_target}
@@ -255,14 +273,15 @@ class DirectoryGeneratorTarget extends GeneratorTarget {
       }
 
       final shouldPrompt = _overwriteRule != OverwriteRule.alwaysOverwrite &&
-          _overwriteRule != OverwriteRule.alwaysSkip;
+          _overwriteRule != OverwriteRule.alwaysSkip &&
+          _overwriteRule != OverwriteRule.alwaysAppend;
 
       if (shouldPrompt) {
         logger.info('${red.wrap(styleBold.wrap('conflict'))} ${file.path}');
         _overwriteRule = logger
             .prompt(
               yellow.wrap(
-                styleBold.wrap('Overwrite ${p.basename(file.path)}? (Yna) '),
+                styleBold.wrap('Overwrite ${p.basename(file.path)}? (Yyna) '),
               ),
             )
             .toOverwriteRule();
@@ -276,14 +295,23 @@ class DirectoryGeneratorTarget extends GeneratorTarget {
         return file;
       case OverwriteRule.alwaysOverwrite:
       case OverwriteRule.overwriteOnce:
+      case OverwriteRule.appendOnce:
+      case OverwriteRule.alwaysAppend:
       default:
+        final shouldAppend = _overwriteRule == OverwriteRule.appendOnce ||
+            _overwriteRule == OverwriteRule.alwaysAppend;
         return file
             .create(recursive: true)
-            .then<File>((_) => file.writeAsBytes(contents))
+            .then<File>((_) => file.writeAsBytes(contents,
+                mode: shouldAppend ? FileMode.append : FileMode.write))
             .whenComplete(
-              () => logger.delayed(
-                '  ${file.path} ${lightGreen.wrap('(new)')}',
-              ),
+              () => shouldAppend
+                  ? logger.delayed(
+                      '  ${file.path} ${lightBlue.wrap('(modified)')}',
+                    )
+                  : logger.delayed(
+                      '  ${file.path} ${lightGreen.wrap('(new)')}',
+                    ),
             );
     }
   }
@@ -481,6 +509,8 @@ extension on FileConflictResolution {
         return OverwriteRule.alwaysOverwrite;
       case FileConflictResolution.skip:
         return OverwriteRule.alwaysSkip;
+      case FileConflictResolution.append:
+        return OverwriteRule.alwaysAppend;
       case FileConflictResolution.prompt:
         return null;
     }
@@ -493,8 +523,10 @@ extension on String {
       case 'n':
         return OverwriteRule.skipOnce;
       case 'a':
-        return OverwriteRule.alwaysOverwrite;
+        return OverwriteRule.appendOnce;
       case 'Y':
+        return OverwriteRule.alwaysOverwrite;
+      case 'y':
       default:
         return OverwriteRule.overwriteOnce;
     }

@@ -1,9 +1,10 @@
 import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
-import 'package:io/io.dart';
+import 'package:universal_io/io.dart';
 
 import 'commands/commands.dart';
 import 'exception.dart';
+import 'io.dart';
 import 'logger.dart';
 import 'version.dart';
 
@@ -20,15 +21,15 @@ class MasonCommandRunner extends CommandRunner<int> {
       negatable: false,
       help: 'Print the current version.',
     );
+    addCommand(AddCommand(logger: _logger));
     addCommand(CacheCommand(logger: _logger));
     addCommand(BundleCommand(logger: _logger));
-    addCommand(InitCommand(logger: _logger));
-    addCommand(InstallCommand(logger: _logger));
-    addCommand(ListCommand(logger: _logger));
     addCommand(GetCommand(logger: _logger));
+    addCommand(InitCommand(logger: _logger));
+    addCommand(ListCommand(logger: _logger));
     addCommand(MakeCommand(logger: _logger));
     addCommand(NewCommand(logger: _logger));
-    addCommand(UninstallCommand(logger: _logger));
+    addCommand(RemoveCommand(logger: _logger));
   }
 
   final Logger _logger;
@@ -52,6 +53,9 @@ class MasonCommandRunner extends CommandRunner<int> {
     } on MasonException catch (e) {
       _logger.err(e.message);
       return ExitCode.usage.code;
+    } on ProcessException catch (error) {
+      _logger.err(error.message);
+      return ExitCode.unavailable.code;
     }
   }
 

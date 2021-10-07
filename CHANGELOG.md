@@ -1,6 +1,43 @@
+# 0.0.1-dev.51
+
+- feat: conditional file and directory creation support
+
+# 0.0.1-dev.50
+
+- **BREAKING** refactor: remove `mason install` and `mason uninstall`
+  - `mason install` -> `mason add -g`
+  - `mason uninstall` -> `mason remove -g`
+- feat: adjust `mason init` generated `mason.yaml`
+- feat: improve `mason list` empty output
+- feat: create `mason remove` command
+- feat: create `mason add` command
+- feat: `mason init` command automatically gets first brick
+- feat: improve output and description for `mason get` command
+- fix: logger stopwatch units
+- docs: update example/README
+
+# 0.0.1-dev.49
+
+- refactor: remove `dart:io` platform dependency
+
+# 0.0.1-dev.48
+
+- feat: add append conflict resolution strategy
+- fix: mason get ensures brick exists
+- docs: add built-in lambdas section to README
+
+# 0.0.1-dev.47
+
+- fix: `vars` in `brick.yaml` are not required
+
+# 0.0.1-dev.46
+
+- fix: `mason bundle` resolves `implicit_dynamic_map_literal` in generated Dart bundle
+- docs: add bundle usage to README
+
 # 0.0.1-dev.45
 
-- fix: `mason bundle` add `.otf` support.
+- fix: `mason bundle` add `.otf` support
 
 # 0.0.1-dev.44
 
