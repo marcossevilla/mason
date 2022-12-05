@@ -4,20 +4,9 @@
 # Remove the following pattern if you wish to check in your lock file
 pubspec.lock
 
-# Conventional directory for build outputs
-build/
-
-# Directory created by dartdoc
-doc/api/
-
-# Temporary Files
-.tmp/
-
 # Local Mason Files
 .mason/
+build/
 
-# Test Related Files
-coverage/
-test/fixtures/.*/
-
-!test/fixtures/*/.mason/
+# IntelliJ and Android Studio
+.idea/

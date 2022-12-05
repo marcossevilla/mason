@@ -1,0 +1,133 @@
+{
+  "name": "mason",
+  "displayName": "mason",
+  "description": "Mason support for Visual Studio Code.",
+  "version": "0.1.6",
+  "publisher": "FelixAngelov",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/felangel/mason"
+  },
+  "bugs": {
+    "url": "https://github.com/felangel/mason/issues",
+    "email": "felangelov@gmail.com"
+  },
+  "homepage": "https://brickhub.dev",
+  "engines": {
+    "vscode": "^1.66.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "keywords": [
+    "mason",
+    "template",
+    "mustache",
+    "brick",
+    "code",
+    "generation"
+  ],
+  "icon": "assets/logo.png",
+  "activationEvents": [
+    "workspaceContains:**/mason.yaml",
+    "workspaceContains:**/brick.yaml",
+    "onCommand:mason.init",
+    "onCommand:mason.add-local-brick",
+    "onCommand:mason.add-global-brick",
+    "onCommand:mason.make-local-brick",
+    "onCommand:mason.make-global-brick",
+    "onCommand:mason.remove-local-brick",
+    "onCommand:mason.remove-global-brick"
+  ],
+  "main": "./dist/extension.js",
+  "extensionDependencies": [
+    "redhat.vscode-yaml"
+  ],
+  "contributes": {
+    "yamlValidation": [
+      {
+        "fileMatch": "brick.yaml",
+        "url": "./schema/brick.yaml.schema.json"
+      },
+      {
+        "fileMatch": "mason.yaml",
+        "url": "./schema/mason.yaml.schema.json"
+      }
+    ],
+    "commands": [
+      {
+        "command": "mason.init",
+        "title": "Mason: Init"
+      },
+      {
+        "command": "mason.add-local-brick",
+        "title": "Mason: Add Local Brick"
+      },
+      {
+        "command": "mason.add-global-brick",
+        "title": "Mason: Add Global Brick"
+      },
+      {
+        "command": "mason.make-local-brick",
+        "title": "Mason: Make Local Brick"
+      },
+      {
+        "command": "mason.make-global-brick",
+        "title": "Mason: Make Global Brick"
+      },
+      {
+        "command": "mason.remove-local-brick",
+        "title": "Mason: Remove Local Brick"
+      },
+      {
+        "command": "mason.remove-global-brick",
+        "title": "Mason: Remove Global Brick"
+      }
+    ],
+    "menus": {
+      "explorer/context": [
+        {
+          "command": "mason.make-local-brick",
+          "group": "masonGroup@1",
+          "when": "explorerResourceIsFolder"
+        },
+        {
+          "command": "mason.make-global-brick",
+          "group": "masonGroup@1",
+          "when": "explorerResourceIsFolder"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run package",
+    "compile": "webpack",
+    "watch": "webpack --watch",
+    "package": "webpack --mode production --devtool hidden-source-map",
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "devDependencies": {
+    "@types/glob": "^8.0.0",
+    "@types/lodash": "^4.14.190",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "14.x",
+    "@types/vscode": "^1.66.0",
+    "@types/yaml": "^1.9.7",
+    "@typescript-eslint/eslint-plugin": "^5.45.0",
+    "@typescript-eslint/parser": "^5.45.0",
+    "eslint": "^8.28.0",
+    "glob": "^8.0.3",
+    "prettier": "2.8.0",
+    "ts-loader": "^9.4.1",
+    "typescript": "^4.9.3",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.0"
+  },
+  "dependencies": {
+    "lodash": "^4.17.21",
+    "yaml": "^2.1.3"
+  }
+}
